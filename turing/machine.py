@@ -43,13 +43,13 @@ class TuringMachine:
 
     def step(self):
         if self.state in self.accepting_states:
-            return False
+            return False, None, None, None
         symbol = self.tape[self.head]
         self.state, change, move = self.transition_function(self.state, symbol)
         if change:
             self.tape[self.head] = int(not self.tape[self.head])
         self.head += move
-        return True
+        return True, self.state, change, move
 
     def run(self):
         def animate(stdscr):
@@ -59,25 +59,32 @@ class TuringMachine:
 
             run = True
 
-            while run:
+            while True:
                 stdscr.clear()
                 tape = "|".join(str(s) for s in self.tape)
                 head = " " * (2 * self.head) + "^"
 
                 # Get screen size and center the message
-                height, width = stdscr.getmaxyx()
+                height, _ = stdscr.getmaxyx()
                 y = height // 2
 
+                stdscr.addstr(0, 0, f"State: {self.state}")
                 stdscr.addstr(y, 0, tape, curses.A_BOLD)
                 stdscr.addstr(y + 1, 0, head, curses.A_BOLD)
+
+                run, _, _, _ = self.step()
+
+                if not run:
+                    quit_message = "Press 'q' to quit"
+                    stdscr.addstr(1, 0, quit_message, curses.A_DIM)
+
                 stdscr.refresh()
 
-                time.sleep(1)  # Wait for 1 second
-                run = self.step()
-
-            # Exit if 'q' is pressed
-            key = stdscr.getch()
-            if key == ord("q"):
-                return
+                if run:
+                    time.sleep(1)
+                else:
+                    key = stdscr.getch()
+                    if key == ord("q"):
+                        break
 
         curses.wrapper(animate)
