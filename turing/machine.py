@@ -1,6 +1,20 @@
 import curses
 import time
+from dataclasses import dataclass
 from typing import Any, Iterable
+
+
+@dataclass
+class Frame:
+    tape: str
+    head: str
+    state: str
+
+    @classmethod
+    def from_machine(cls, machine):
+        tape = "|".join(str(s) for s in machine.tape)
+        head = " " * (2 * machine.head) + "^"
+        return cls(tape, head, machine.state)
 
 
 class TransitionFunction:
@@ -40,15 +54,24 @@ class TuringMachine:
 
     def step(self):
         if self.state in self.halt_states:
-            return False, None, None, None
+            return False
         symbol = self.tape[self.head]
-        self.state, change, move = self.transition_function(self.state, symbol)
+        state, change, move = self.transition_function(self.state, symbol)
         if change:
             self.tape[self.head] = int(not self.tape[self.head])
         self.head += move
-        return True, self.state, change, move
+        self.state = state
+        return True
 
     def run(self):
+        def animate_frame(machine, stdscr):
+            frame = Frame.from_machine(machine)
+            height, _ = stdscr.getmaxyx()
+            middle_y = height // 2
+            stdscr.addstr(0, 0, f"State: {self.state}")
+            stdscr.addstr(middle_y, 0, frame.tape, curses.A_BOLD)
+            stdscr.addstr(middle_y + 1, 0, frame.head, curses.A_BOLD)
+
         def animate(stdscr):
             curses.curs_set(0)  # Hide the cursor
             stdscr.nodelay(True)  # Non-blocking input
@@ -58,18 +81,9 @@ class TuringMachine:
 
             while True:
                 stdscr.clear()
-                tape = "|".join(str(s) for s in self.tape)
-                head = " " * (2 * self.head) + "^"
+                animate_frame(self, stdscr)
 
-                # Get screen size and center the message
-                height, _ = stdscr.getmaxyx()
-                y = height // 2
-
-                stdscr.addstr(0, 0, f"State: {self.state}")
-                stdscr.addstr(y, 0, tape, curses.A_BOLD)
-                stdscr.addstr(y + 1, 0, head, curses.A_BOLD)
-
-                run, _, _, _ = self.step()
+                run = self.step()
 
                 if not run:
                     quit_message = "Press 'q' to quit"
