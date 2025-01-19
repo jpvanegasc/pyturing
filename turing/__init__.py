@@ -1,1 +1,1 @@
-from .machine import TransitionFunctionBase, TuringMachine  # noqa: F401
+from .machine import TransitionFunction, TuringMachine  # noqa: F401

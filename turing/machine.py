@@ -1,48 +1,45 @@
-import abc
 import curses
 import time
 from typing import Any, Iterable
 
 
-class TransitionFunctionBase(abc.ABC):
-    @abc.abstractmethod
+class TransitionFunction:
+    def __init__(self, transitions, halt_states):
+        self.states = list(transitions.keys())
+        if not set(halt_states).issubset(self.states):
+            raise ValueError("States must contain halt states")
+        self.transitions = transitions
+        self.halt_states = halt_states
+
     def __call__(self, state, symbol):
-        pass
+        if state in self.states:
+            return self.transitions[state].get(symbol, (None, None, None))
+        else:
+            raise ValueError("Invalid state")
 
 
 class TuringMachine:
     def __init__(
         self,
         tape: Iterable[Any],
-        states,
-        transition_function_class,
+        transition_function: TransitionFunction,
         *,
         blank_symbol=0,
         input_symbols=(1,),
         initial_state_index=0,
-        final_state_indices=None,
         tape_head_position=0,
     ):
         self.tape = tape
         self.head = tape_head_position
-        self.states = states
+        self.transition_function = transition_function
+        self.states = transition_function.states
+        self.halt_states = transition_function.halt_states
         self.blank_symbol = blank_symbol
         self.input_symbols = input_symbols
         self.state = self.states[initial_state_index]
 
-        if final_state_indices is None:
-            self.accepting_states = states
-        else:
-            self.accepting_states = [states[i] for i in final_state_indices]
-
-        if not issubclass(transition_function_class, TransitionFunctionBase):
-            raise TypeError(
-                "transition_function_class must be a subclass of TransitionFunctionBase"
-            )
-        self.transition_function = transition_function_class()
-
     def step(self):
-        if self.state in self.accepting_states:
+        if self.state in self.halt_states:
             return False, None, None, None
         symbol = self.tape[self.head]
         self.state, change, move = self.transition_function(self.state, symbol)
